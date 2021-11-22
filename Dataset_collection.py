@@ -701,7 +701,7 @@ if __name__ == '__main__':
           filename=None, sep=_sep, exp_type=_activity_list)
 
 
-#cat chembl_id | xargs -I {1} Dataset_full1_10_pp.py -i {1} --t reg --activity EC50 IC50 -v plog_value -a other
+#cat chembl_id | xargs -I {1} Dataset_collection.py -i {1} --t reg --activity EC50 IC50 -v plog_value -a other
 
     # salt problem -> smi_std
 

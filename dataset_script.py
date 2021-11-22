@@ -2,7 +2,7 @@ import os
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 import pandas as pd
-import Dataset_full1_10_pp as Dataset10
+import Dataset_collection as Dataset10
 from multiprocessing import Pool
 
 from functools import partial
