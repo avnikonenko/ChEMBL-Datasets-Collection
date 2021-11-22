@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+
+# authors; Aleksandra Nikonenko, Pavel Polishchuk
+# 2021
+
 import os
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 

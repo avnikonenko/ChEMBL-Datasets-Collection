@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+
+# authors; Aleksandra Nikonenko, Pavel Polishchuk
+# 2021
+
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import os.path
 import sqlite3
