@@ -68,7 +68,7 @@ def pool_map_iter(chembl_row, inp_path, type_dataset, input_fname_target, db, sm
 
     if 'cutoff_act' in chembl_row:
         act_dict = {i: (float(chembl_row['cutoff_act']), '>=') for i in chembl_row['activity'].split(';')},
-        inact_dict = {i: (float(chembl_row['cutoff_inact']), '<') for i in chembl_row['activity'].split(';')},
+        inact_dict = {i: (float(chembl_row['cutoff_inact']), '<') for i in chembl_row['experiment_type'].split(';')},
 
     if 'category' in chembl_row:
         type_act = chembl_row['category'].split(';')
@@ -100,7 +100,6 @@ def get_from_csv(fname, type_dataset='class', sep='\t', ncpu=1, db=None, smi_std
     inp_path = os.path.dirname(fname)
     input_fname_target = os.path.basename(fname).split('.')[0]
     p = Pool(ncpu)
-
     p.map(partial(pool_map_iter,inp_path=inp_path, type_dataset=type_dataset,
                   input_fname_target=input_fname_target, db=db, smi_std=smi_std, sep=sep), [i[1] for i in data.iterrows()])
 
@@ -108,10 +107,17 @@ def get_from_csv(fname, type_dataset='class', sep='\t', ncpu=1, db=None, smi_std
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='', formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-i', '--input', metavar='target_class_file.txt', required=True)
-    parser.add_argument('-t', '--type_dataset', metavar='class/reg', default='class')
-    parser.add_argument('-d', '--db', metavar='ChEMBL-db.db', default=None)
-    parser.add_argument('-s', '--smi_std', metavar='smi_std.smi', default=None)
+    parser.add_argument('-i', '--input', metavar='target_class_file.txt', required=True,
+                        help='''CSV file. Required column: chembl_id. Optional columns: '
+                             - target_class: epigenetic_factor, transporter, ion_channel, enzyme, membrane_protein, membrane_receptor. 
+                             Other clasess will be processed by default setting - consider mol as active with pKi, pKd, pIC50, pEC50 >= 6.
+                             - cutoff_act and - cutoff_inact: float cutoff value for active/inactive split.
+                             - activity: list of the experiment types you want to get (; using as sep). Exp: Ki;IC50;EC50;Kd
+                             - category: list of the activity types you want to get (; using as sep). Exp: agonist;antagonist
+                              ''')
+    parser.add_argument('-t', '--type_dataset', metavar='class/reg',choices=['class', 'reg'], default='class')
+    parser.add_argument('-d', '--db', metavar='ChEMBL29.db', default=None, help='If value is not set online version of ChEMBL will be used')
+    parser.add_argument('-s', '--smi_std', metavar='smi_std.smi', default=None, help='standardized smiles')
     parser.add_argument('-n', '--ncpu', metavar='int', default=1, type=int)
     parser.add_argument('--sep', metavar=',', default='\t')
 

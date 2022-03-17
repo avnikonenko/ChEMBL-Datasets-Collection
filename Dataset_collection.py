@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# authors; Aleksandra Nikonenko, Pavel Polishchuk
+# authors; Aleksandra Ivanova, Pavel Polishchuk
 # 2021
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
@@ -80,7 +80,7 @@ class BaseDataSet:
         if filename:
         Warning: File must contains the next columns (necessary set):
          'cmp': ChEMBL ID;
-         'smile':{smile structure};
+         'smiles':{smiles structure};
          'operator': =, >=, <=, <, >, !=, ==;
          'value': value to assay;
          'units': unit to assay ;
@@ -130,7 +130,7 @@ class BaseDataSet:
                 print(res, self.__idchembl, 'Warning. Error loading')
                 return False
 
-        self._pdresult['target'] = self.__idchembl
+        self._pdresult.loc[:,'target'] = self.__idchembl
 
         self._pdresult.loc[:,'operator'] = self._pdresult['operator'].fillna('=')
         self._pdresult.loc[:,'value'] = self._pdresult['value'].apply(pd.to_numeric, downcast='float', errors='coerce')
@@ -142,15 +142,15 @@ class BaseDataSet:
         # convert uM or M to nM
         if 'uM' in self._pdresult['units'].tolist():
             print('uM')
-            self._pdresult[self._pdresult['units'] == 'uM'] = self._pdresult[self._pdresult['units'] == 'uM'].apply(
+            self._pdresult.loc[self._pdresult['units'] == 'uM', :] = self._pdresult[self._pdresult['units'] == 'uM'].apply(
                 self.__convert_to_nmol, axis='columns')
         if 'M' in self._pdresult['units'].tolist():
             print('M')
-            self._pdresult[self._pdresult['units'] == 'M'] = self._pdresult[self._pdresult['units'] == 'M'].apply(
+            self._pdresult.loc[self._pdresult['units'] == 'M', :] = self._pdresult[self._pdresult['units'] == 'M'].apply(
                 self.__convert_to_nmol, axis='columns')
         if True in self._pdresult['bioactivity_type'].isin(['pKd', 'pKi', 'pIC50', 'pEC50']):
             print('logValue')
-            self._pdresult[self._pdresult['bioactivity_type'].isin(['pKd', 'pKi', 'pIC50', 'pEC50'])] = \
+            self._pdresult.loc[self._pdresult['bioactivity_type'].isin(['pKd', 'pKi', 'pIC50', 'pEC50']), :] = \
                 self._pdresult[self._pdresult['bioactivity_type'].isin(['pKd', 'pKi', 'pIC50', 'pEC50'])].apply(
                     self.__convert_to_nmol, axis='columns')
 
@@ -216,7 +216,7 @@ class BaseDataSet:
         res = cur.fetchall()
         res = pd.DataFrame(res, columns=['cmp', 'operator', 'value', 'pchembl_value', 'units', 'bioactivity_type',
                                          'assay_type',
-                                         'assay_description', 'smile', 'reference'])
+                                         'assay_description', 'smiles', 'reference'])
         return res
 
     def __webchembl(self):
@@ -224,10 +224,10 @@ class BaseDataSet:
 
         Description: Load and save all activity experiment result for target
         Arg: Target ChemblID
-        Return: Compound set (description of act)
+        Return: Compounds set (with description of act)
 
         """
-        # limit api - 1000 entr
+        # limit api - 1000
 
         Next = True
         offset = 0
@@ -260,7 +260,7 @@ class BaseDataSet:
                              'target_chembl_id': cmp['target_chembl_id'],
                              'target_pref_name': cmp['target_pref_name'],
                              'assay_description': cmp['assay_description'],
-                             'smile': cmp['canonical_smiles'],
+                             'smiles': cmp['canonical_smiles'],
                              'reference': '-'.join([cmp['target_organism'], str(cmp['document_year']),
                                                     str(cmp['document_chembl_id'])])})
         pdresult = pd.DataFrame.from_dict(cmps)
@@ -324,8 +324,8 @@ class BaseDataSet:
                 return None
 
         self._id_cmp = colname
-        standart_smile = pd.read_csv(smi_filename, sep='\t', header=None, names=[colname, 'cmp'])
-        self._pdresult = pd.merge(self._pdresult, standart_smile, on='cmp')
+        standart_smiles = pd.read_csv(smi_filename, sep='\t', header=None, names=[colname, 'cmp'])
+        self._pdresult = pd.merge(self._pdresult, standart_smiles, on='cmp')
 
     def __convert_to_nmol(self, pdata):
         # error pandas/ twise apply for the first object
@@ -389,7 +389,7 @@ class BaseDataSet:
             if work_path and make_dir:
                 makedirs(work_path, exist_ok=True)
 
-        print('Target: ', outfile, arg)
+        print('Finished. Target: ', outfile, arg)
 
         if arg == 'log' or arg == 'all':
             self._pdresult.to_csv(os.path.join(work_path, '{0}_{1}_log'.format(outfile, self._type_dataset)),
@@ -436,7 +436,7 @@ class BaseDataSet:
                 stat.loc[key, 'undefined'] = len(res[res['status'] == 'undefined'])
 
         if not stat.empty:
-            stat = stat.rename_axis(index='act').reset_index().astype('int')
+            stat = stat.rename_axis(index='act').reset_index()
             stat.to_csv('{0}_{1}'.format(outfile, 'stat'), sep=sep, index=False)
 
 
@@ -507,7 +507,7 @@ class ClassDataSet(BaseDataSet):
         '''
 
         if 'status' not in self._pdresult.columns:
-            self._pdresult['status'] = 'undefined'
+            self._pdresult.loc[:, 'status'] = 'undefined'
 
         for bioactivity, cond in filt.items():
             val, match = cond
@@ -602,8 +602,8 @@ def start(Chemblid, outfname, type_act, contr_list=None, act_dict=None, inact_di
     :param exp_type: list. Exp: ['Ki']
     :return:
     '''
-    print('start', Chemblid, outfname, type_act, contr_list, act_dict, inact_dict, value, db, smi_std,
-          type_dataset, filename, sep,exp_type)
+    print(f'start. CHEMBLID: {Chemblid}. outfname: {outfname}. type_act: {type_act}. contr_list: {contr_list}. act_dict: {act_dict}. inact_dict: {inact_dict}.'
+          f'value: {value}. DB: {db}. smi_std: {smi_std}. type_dataset: {type_dataset}. filename {filename}. sep: {sep}. exp_type: {exp_type}')
 
     if type_dataset == 'class':
         if filename is not None:
@@ -650,31 +650,31 @@ def start(Chemblid, outfname, type_act, contr_list=None, act_dict=None, inact_di
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='', formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-i', '--input', metavar='ChEMBLlID', required=True)
+    parser.add_argument('-i', '--input', metavar='ChEMBLID', required=True)
     parser.add_argument('--t', metavar='class/reg', required=True)
     parser.add_argument('--activity', metavar='Ki IC50 EC50', required=True, nargs='*')
     parser.add_argument('-o', '--output', metavar='output', required=False, default=None)
     parser.add_argument('-a', '--act', metavar='binding inhibitor activator', required=False, nargs='*', default=['other'])
     parser.add_argument('-c', '--contr', metavar='inhibitor activator', required=False, nargs='*', default=[])
     parser.add_argument('-v','--value', metavar='value/plog_value', required=False,  default='value')
-    parser.add_argument('--active_value', metavar='7', required=False,  default='6')
-    parser.add_argument('--active_op', metavar='>=', required=False,  default='>=')
-    parser.add_argument('--inactive_value', metavar='7', required=False,  default='6')
-    parser.add_argument('--inactive_op', metavar='<', required=False,  default='<')
-    parser.add_argument('--sep', metavar=',/;', required=False,  default=';')
+    parser.add_argument('-d', '--db', metavar='ChEMBL29.db', default=None, help='If value is not set api version of ChEMBL will be used')
+    parser.add_argument('-s', '--smi_std', metavar='smi_std.smi', default=None, help='standardized smiles')
+    parser.add_argument('--active_value', metavar='number', required=False,  default='6')
+    parser.add_argument('--active_op', metavar='operator', required=False,  default='>=')
+    parser.add_argument('--inactive_value', metavar='number', required=False,  default='6')
+    parser.add_argument('--inactive_op', metavar='operator', required=False,  default='<')
+    parser.add_argument('--sep', metavar='separator', required=False,  default='\t')
+    parser.add_argument('--show_tree_act', action='store_true', default=False)
 
     args = parser.parse_args()
     print(vars(args))
 
-    # for i in d['chemblid'].to_list():
-    # start(i, 'Ki_1000_ready/'+i, ['other'],
-    # contr_list=None, act_dict=None, inact_dict=None, value='plog_value',
-    # db=chembl_23.db',
-    # smi_std='chembl_23_step2_chembl_id.smi',
-    # type_dataset='reg', sep=',', exp_type=['Ki'])
+    if args.show_tree_act:
+        print(tree_act)
+        exit(0)
 
-    _db = 'chembl_23.db'
-    _smi_std = 'hembl_23_step2_chembl_id.smi'
+    _db = args.db
+    _smi_std = args.smi_std
 
     _chemblID = args.input
     _type_act = args.act
@@ -694,8 +694,6 @@ if __name__ == '__main__':
     if _output is None:
         _output = os.path.join(_chemblID,_chemblID)
 
-    # _act_dict = {'Ki': (6, '>='), 'IC50': (6, '>='), 'Kd': (6, '>='), 'EC50': (6, '>=')}
-    # _inact_dict = {'Ki': (6, '<'), 'IC50': (6, '<'), 'Kd': (6, '<'), 'EC50': (6, '<')}
     _act_dict = {i:(_act_val, _act_op) for i in _activity_list}
     _inact_dict = {i:(_inact_val, _inact_op) for i in _activity_list}
 
@@ -704,25 +702,3 @@ if __name__ == '__main__':
           contr_list=_contr_list, act_dict=_act_dict, inact_dict=_inact_dict,
           db=_db, smi_std=_smi_std,type_dataset=_type_dataset,
           filename=None, sep=_sep, exp_type=_activity_list)
-
-
-#cat chembl_id | xargs -I {1} Dataset_collection.py -i {1} --t reg --activity EC50 IC50 -v plog_value -a other
-
-    # salt problem -> smi_std
-
-    # type act - warning order for search
-    # type_act = ['allosteric', 'competitive antagonist', 'inverse agonist',
-    #             'partial agonist', 'full agonist', 'antagonist', 'agonist',
-    #             'inhibitor', 'other']
-    # type_act = ['inhibitor', 'other']
-    #  type_act = ['other']
-
-    # use_target_fname('set.txt', db='../../chembl_23.db', type_dataset='class')
-    # use_target_fname('set.txt', db='../../chembl_23.db', type_dataset='reg')
-    # use_target_fname('set.txt', db='chembl_23.db', type_dataset='class',
-    #                  smi_std='chembl_23_step2_chembl_id.smi')
-
-# for i in d['chemblid'].to_list():
-#     start(i, 'Ki_1000_ready/'+i, ['other'], contr_list=None, act_dict=None, inact_dict=None, value='plog_value', db='chembl_23.db',
-#           smi_std='chembl_23_step2_chembl_id.smi',
-#           type_dataset='reg', sep=',', exp_type=['Ki'])
