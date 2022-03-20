@@ -174,3 +174,6 @@ optional arguments:
   --sep separator
   --show_tree_act
 ```
+
+## License
+BSD-3
