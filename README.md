@@ -65,6 +65,7 @@ Allowed types:
 - other
 
 You can find more details using --show_tree_act argument
+! Warning: The order of parameters in act/act_type is important. Set it in order from most specific type_act to least. Because once a type is assigned, it cannot be overwritten, and the order of assignment is equal to the order of the given arguments. Example: -a "partial agonist" "agonist" but not -a "agonist" "partial agonist".    
 ```
 python Dataset_collection.py --show_tree_act
 ```
