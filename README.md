@@ -1,5 +1,6 @@
 # ChEMBL datasets preparation
-**Dataset collection and preprocessing script**    
+**Dataset collection and preprocessing script** 
+a Python-based tool to automate the retrieval and preprocessing of datasets from the ChEMBL database, tailored to specific activity types (e.g., agonists, antagonists, inverse agonist
 ## Pipeline
 **1. Collect activity data for preset target by ChEMBLID from ChEMBL(from api version or local db)**  
 Received data:
