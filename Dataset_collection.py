@@ -74,6 +74,7 @@ tree_act = {'allosteric': {'allosteric': [['allosteric'], [], []]},
 
 
 class BaseDataSet:
+    """Base class for ChEMBL dataset collection: handles data loading, unit conversion, activity type assignment, and saving."""
 
     def __init__(self, filename=None, idchembl=None, type_act=None, overwrite=True, type_dataset='class'):
         """
@@ -330,6 +331,7 @@ class BaseDataSet:
         self._pdresult = pd.merge(self._pdresult, standart_smiles, on='cmp')
 
     def __convert_to_nmol(self, pdata):
+        """Convert activity value to nM (from uM or M) or back-convert from plog units (pKi, pIC50, etc.)."""
         # error pandas/ twise apply for the first object
         if pdata['units'] == 'uM':
             coef = 10 ** 3
@@ -588,6 +590,7 @@ class ClassDataSet(BaseDataSet):
         self._filt_contr_act_result(contr)
 
     def _filt_contr_act_result(self, contr):
+        """Set status to 'controversial' for active compounds appearing in both activity types of the contr pair."""
         def __check_contr_type_act(cmp_group, contr):
             if contr[0] in cmp_group['act'].unique() and contr[1] in cmp_group['act'].unique():
                 return True

@@ -46,7 +46,7 @@ def cuttof_target_type(targ):
         inact_dict = {'Ki': (7.5, '<'), 'IC50': (7.5, '<'), 'Kd': (7.5, '<'), 'EC50': (7.5, '<')}
 
 
-    elif 'membrane_protein' or 'membrane_receptor' in targ:
+    elif 'membrane_protein' in targ or 'membrane_receptor' in targ:
         type_act = ['allosteric', 'inverse agonist','antagonist','agonist', 'inhibitor', 'binding']
         contr_list = [('agonist', 'antagonist'), ('inhibitor', 'agonist')]
         # plog_value
@@ -73,8 +73,8 @@ def pool_map_iter(chembl_row, inp_path, type_dataset, input_fname_target, db, sm
         act_dict, inact_dict, type_act, contr_list = cuttof_target_type(chembl_row['target_class'])
 
     if 'cutoff_act' in chembl_row:
-        act_dict = {i: (float(chembl_row['cutoff_act']), '>=') for i in chembl_row['activity'].split(';')},
-        inact_dict = {i: (float(chembl_row['cutoff_inact']), '<') for i in chembl_row['experiment_type'].split(';')},
+        act_dict = {i: (float(chembl_row['cutoff_act']), '>=') for i in chembl_row['activity'].split(';')}
+        inact_dict = {i: (float(chembl_row['cutoff_inact']), '<') for i in chembl_row['experiment_type'].split(';')}
 
     if 'category' in chembl_row:
         type_act = chembl_row['category'].split(';')
