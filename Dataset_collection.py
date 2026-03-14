@@ -283,7 +283,7 @@ class BaseDataSet:
         return act, keys
 
     def __add_act_descr(self, res):
-
+        """Assign 'act' and 'type_act' columns by matching assay_description against tree_act keywords."""
         res.loc[:,'act'] = 'other'
         res.loc[:,'type_act'] = 'other'
 
@@ -305,6 +305,7 @@ class BaseDataSet:
         return res
 
     def __check_act(self, df, keys):
+        """Return True if assay description matches the keyword rule: any of keys[0] present, none of keys[1] present, all of keys[2] present."""
         line = ' {} '.format(df.lower()).replace('.', ' ').replace(',', ' ')
         if (any(' {} '.format(key) in line for key in keys[0]) or \
             (all(' {} '.format(key) in line for key in keys[2]) and keys[2])) and \
@@ -314,6 +315,7 @@ class BaseDataSet:
         return False
 
     def add_standardized_smiles(self, smi_filename, colname='standardized_canonical_smiles'):
+        """Merge standardized SMILES from a tab-separated file (SMILES, ChEMBL ID) into the dataset."""
         if colname in self._pdresult.columns:
             print('Error colname {} already exist'.format(colname))
             if colname == 'standardized_canonical_smiles':
@@ -351,6 +353,7 @@ class BaseDataSet:
         return pdata
 
     def calc_MW(self):
+        """Calculate molecular weight from standardized SMILES and store it in the 'MW' column."""
         def _calc_MW(smi):
             mol = Chem.MolFromSmiles(smi)
             return Descriptors.MolWt(mol)
@@ -404,6 +407,7 @@ class BaseDataSet:
                                     drop_duplicate, sep=sep)
 
     def __save_split_group(self, col, val, outfile, na_filter=True, drop_duplicate=True, sep='\t'):
+        """Split dataset by unique values of col, save each group to a CSV, and write a summary statistics file."""
         stat = pd.DataFrame()
         for key in val:
             res = pd.DataFrame()
@@ -441,6 +445,8 @@ class BaseDataSet:
 
 
 class ReggDataSet(BaseDataSet):
+    """Regression dataset: aggregates activity values by taking the mean plog across duplicate experiments."""
+
     def __init__(self, filename=None, idchembl=None,
                  type_act=['allosteric', 'competitive antagonist', 'inverse agonist',
                            'partial agonist', 'full agonist', 'antagonist', 'agonist',
