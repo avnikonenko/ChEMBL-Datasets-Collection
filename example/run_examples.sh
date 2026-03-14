@@ -16,13 +16,25 @@ SMI_STD="$SCRIPT_DIR/chembl_33_step4.smi.tar.gz"
 # Dataset_collection.py  — single target, online ChEMBL API
 # ---------------------------------------------------------------------------
 
-# Main example: CHEMBL301 (Carbonic anhydrase II), regression, with standardized SMILES
+# Main example 1: CHEMBL301 (Carbonic anhydrase II), regression, with standardized SMILES, all act types
 python Dataset_collection.py \
     -i CHEMBL301 \
     --t reg \
     -v plog_value \
     -s "$SMI_STD" \
     --activity Ki IC50 EC50 Kd \
+    --active_value 6 --active_op ">=" \
+    --inactive_value 5 --inactive_op "<="
+
+# Main example 2: CHEMBL301 (Carbonic anhydrase II), regression, with standardized SMILES,
+# return competitive and non-competitive inhibitors only
+python Dataset_collection.py \
+    -i CHEMBL301 \
+    --t reg \
+    -v plog_value \
+    -s "$SMI_STD" \
+    --activity Ki IC50 EC50 Kd \
+    -a "competitive inhibitor" "non-competitive inhibitor" \
     --active_value 6 --active_op ">=" \
     --inactive_value 5 --inactive_op "<="
 

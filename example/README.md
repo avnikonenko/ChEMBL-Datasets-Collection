@@ -1,5 +1,17 @@
 # Example files
 
+### Supported  `activity type` values    
+| `act` | `type_act` examples |
+|---|---|
+| agonist | full agonist, partial agonist |
+| antagonist | competitive antagonist, non-competitive antagonist, inverse agonist |
+| inhibitor | competitive inhibitor, non-competitive inhibitor, uncompetitive inhibitor |
+| activator | activator |
+| allosteric | allosteric |
+| blockator | blockator |
+| binding | binding |
+| other | (no classification) |
+
 ## Standardized SMILES
 
 | File | Description |
