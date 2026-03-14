@@ -6,6 +6,7 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import os.path
 import sqlite3
+import tarfile
 from math import log10
 from os import makedirs
 from os.path import basename, exists, dirname
@@ -327,7 +328,13 @@ class BaseDataSet:
                 return None
 
         self._id_cmp = colname
-        standart_smiles = pd.read_csv(smi_filename, sep='\t', header=None, names=[colname, 'cmp'])
+        if smi_filename.endswith('.tar.gz') or smi_filename.endswith('.tgz'):
+            with tarfile.open(smi_filename, 'r:gz') as tar:
+                member = tar.getmembers()[0]
+                standart_smiles = pd.read_csv(tar.extractfile(member), sep='\t', header=None, names=[colname, 'cmp'])
+        else:
+            standart_smiles = pd.read_csv(smi_filename, sep='\t', header=None, names=[colname, 'cmp'],
+                                          compression='infer')
         self._pdresult = pd.merge(self._pdresult, standart_smiles, on='cmp')
 
     def __convert_to_nmol(self, pdata):
