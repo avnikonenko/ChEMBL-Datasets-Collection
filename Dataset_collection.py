@@ -454,10 +454,12 @@ class ReggDataSet(BaseDataSet):
         super().__init__(filename=filename, idchembl=idchembl, type_act=type_act, type_dataset='reg')
 
     def filt_data(self, bioactivity_type=['Ki', 'IC50', 'Kd'], units=['nM'], operator=['='], delta_diff=0.5):
+        """Mark experiment rows as 'norm' or 'undefined'/'del' based on bioactivity type, units, operator, and plog range."""
         self._filt_experiment_type(bioactivity_type=bioactivity_type, units=units, operator=operator)
         self._filt_diff_results(delta_diff=delta_diff, operator=operator)
 
     def _filt_experiment_type(self, bioactivity_type=['Ki', 'IC50', 'Kd'], units=['nM'], operator=['=']):
+        """Set 'exp_type' to 'norm' for rows matching the given bioactivity types, units, and operators; else 'undefined'."""
         mask_true = self._pdresult['bioactivity_type'].isin(bioactivity_type) & self._pdresult['units'].isin(units) & \
                     self._pdresult['operator'].isin(operator)
 
@@ -465,6 +467,7 @@ class ReggDataSet(BaseDataSet):
         self._pdresult.loc[mask_true, 'exp_type'] = 'norm'
 
     def _filt_diff_results(self, delta_diff=0.5, operator=['=']):
+        """Mark groups where plog range >= delta_diff or any non-'=' operator as 'del'."""
         def __mask_del_value(cmp_group, delta_diff):
             if len(cmp_group) > 1:
                 if not all(cmp_group['operator'].isin(operator)) or \
@@ -478,6 +481,7 @@ class ReggDataSet(BaseDataSet):
         self._pdresult.loc[mask_del_diff, 'diff'] = 'del'
 
     def mean_duplicate(self):
+        """Add mean_plog_value and mean_value columns computed over groups of (SMILES, bioactivity type, units, act, type_act)."""
         self._pdresult.loc[:, 'mean_plog_value'] = \
             self._pdresult.groupby([self._id_cmp, 'bioactivity_type','units', 'act', 'type_act'])[
                 'plog_value'].transform(np.mean)
@@ -487,6 +491,7 @@ class ReggDataSet(BaseDataSet):
 
 
 class ClassDataSet(BaseDataSet):
+    """Classification dataset: labels each compound as active, inactive, or undefined based on value thresholds."""
 
     def __init__(self, filename=None, idchembl=None,
                  type_act=['allosteric', 'competitive antagonist', 'inverse agonist',
@@ -521,7 +526,7 @@ class ClassDataSet(BaseDataSet):
             self._pdresult.loc[mask, 'status'] = status
 
     def __get_index_act(self, bioactivity, val, match, status, unit, value):
-
+        """Build a boolean mask for rows matching bioactivity type, value threshold, units, and operator direction."""
         mask1 = self._pdresult['bioactivity_type'] == bioactivity
 
         if match == '<=':
@@ -551,10 +556,12 @@ class ClassDataSet(BaseDataSet):
         return mask1 & mask2 & mask3
 
     def filt_data(self, bioactivity_type=['Ki', 'IC50', 'Kd'], units=['nM']):
+        """Mark experiment rows and remove compounds with contradictory active/inactive labels."""
         self._filt_experiment_type(bioactivity_type=bioactivity_type, units=units)
         self._filt_contr_status()
 
     def _filt_experiment_type(self, bioactivity_type=['Ki', 'IC50', 'Kd'], units=['nM']):
+        """Set 'exp_type' to 'norm' for rows matching bioactivity types and units; else 'undefined'."""
         mask_true = self._pdresult['bioactivity_type'].isin(bioactivity_type) & self._pdresult['units'].isin(units)
 
         self._pdresult.loc[:, 'exp_type'] = 'undefined'
@@ -577,6 +584,7 @@ class ClassDataSet(BaseDataSet):
         self._pdresult.loc[mask_nonunique, 'status'] = 'del'
 
     def filt_contr_data(self, contr=tuple(('agonist', 'antagonist'))):
+        """Mark as 'controversial' compounds that are active in both activity types of the given contradictory pair."""
         self._filt_contr_act_result(contr)
 
     def _filt_contr_act_result(self, contr):

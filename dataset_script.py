@@ -14,6 +14,11 @@ from functools import partial
 
 
 def cuttof_target_type(targ):
+    """Return (act_dict, inact_dict, type_act, contr_list) with recommended thresholds for a given protein class.
+
+    Thresholds follow Bosc et al., J. Cheminf. 2019, 11, 4.
+    Supported classes: epigenetic_factor, transporter, ion_channel, enzyme, membrane_protein, membrane_receptor.
+    """
     targ = targ.replace(' ','_').lower()
 
     if any(i in targ for i in ['epigenetic_factor','transporter']):
@@ -61,6 +66,7 @@ def cuttof_target_type(targ):
 
 
 def pool_map_iter(chembl_row, inp_path, type_dataset, input_fname_target, db, smi_std, sep):
+    """Process a single target row from the input CSV: resolve thresholds and call Dataset_collection.start."""
     act_dict, inact_dict, type_act, contr_list, exp_type = None, None, None, None, None
 
     if 'target_class' in chembl_row:
@@ -95,7 +101,7 @@ def pool_map_iter(chembl_row, inp_path, type_dataset, input_fname_target, db, sm
 
 
 def get_from_csv(fname, type_dataset='class', sep='\t', ncpu=1, db=None, smi_std=None):
-
+    """Read targets from a CSV file and process each in parallel using a multiprocessing pool."""
     data = pd.read_csv(fname, sep=sep)
     inp_path = os.path.dirname(fname)
     input_fname_target = os.path.basename(fname).split('.')[0]
