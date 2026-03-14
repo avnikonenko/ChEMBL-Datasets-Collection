@@ -17,11 +17,14 @@ def cuttof_target_type(targ):
     """Return (act_dict, inact_dict, type_act, contr_list) with recommended thresholds for a given protein class.
 
     Thresholds follow Bosc et al., J. Cheminf. 2019, 11, 4.
-    Supported classes: epigenetic_factor, transporter, ion_channel, enzyme, membrane_protein, membrane_receptor.
+    Supported classes: epigenetic_factor, epigenetic regulator, transporter, ion_channel, enzyme, membrane_protein, membrane_receptor.
     """
+    # Normalise input: spaces → underscores, lowercase.
+    # This means ChEMBL class names like 'epigenetic regulator' match
+    # 'epigenetic_regulator', and 'Enzyme' matches 'enzyme', etc.
     targ = targ.replace(' ','_').lower()
 
-    if any(i in targ for i in ['epigenetic_factor','transporter']):
+    if any(i in targ for i in ['epigenetic_factor', 'epigenetic_regulator', 'transporter']):
         ## plog_value
         act_dict = {'Ki': (6, '>='), 'IC50': (6, '>='), 'Kd': (6, '>='), 'EC50': (6, '>=')}
         inact_dict = {'Ki': (6, '<'), 'IC50': (6, '<'), 'Kd': (6, '<'), 'EC50': (6, '<')}
