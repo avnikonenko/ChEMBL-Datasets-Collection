@@ -649,22 +649,56 @@ def start(Chemblid, outfname, type_act, contr_list=None, act_dict=None, inact_di
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='', formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-i', '--input', metavar='ChEMBLID', required=True)
-    parser.add_argument('--t', metavar='class/reg', required=True)
-    parser.add_argument('--activity', metavar='Ki IC50 EC50', required=True, nargs='*')
-    parser.add_argument('-o', '--output', metavar='output', required=False, default=None)
-    parser.add_argument('-a', '--act', metavar='binding inhibitor activator', required=False, nargs='*', default=['other'])
-    parser.add_argument('-c', '--contr', metavar='inhibitor activator', required=False, nargs='*', default=[])
-    parser.add_argument('-v','--value', metavar='value/plog_value', required=False,  default='value')
-    parser.add_argument('-d', '--db', metavar='ChEMBL29.db', default=None, help='If value is not set api version of ChEMBL will be used')
-    parser.add_argument('-s', '--smi_std', metavar='smi_std.smi', default=None, help='standardized smiles')
-    parser.add_argument('--active_value', metavar='number', required=False,  default='6')
-    parser.add_argument('--active_op', metavar='operator', required=False,  default='>=')
-    parser.add_argument('--inactive_value', metavar='number', required=False,  default='6')
-    parser.add_argument('--inactive_op', metavar='operator', required=False,  default='<')
-    parser.add_argument('--sep', metavar='separator', required=False,  default='\t')
-    parser.add_argument('--show_tree_act', action='store_true', default=False)
+    parser = ArgumentParser(description='Collect and filter bioactivity datasets from ChEMBL.',
+                            formatter_class=ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-i', '--input', metavar='ChEMBLID', required=True,
+                        help='ChEMBL target ID (e.g. CHEMBL1234) or path to a local TSV file with activity data.')
+    parser.add_argument('--t', metavar='class/reg', required=True,
+                        help='Dataset type: "class" for classification (active/inactive labels) '
+                             'or "reg" for regression (continuous activity values).')
+    parser.add_argument('--activity', metavar='Ki IC50 EC50', required=True, nargs='*',
+                        help='One or more bioactivity types to include (e.g. Ki IC50 Kd EC50). '
+                             'Only records with a matching standard_type will be used.')
+    parser.add_argument('-o', '--output', metavar='output', required=False, default=None,
+                        help='Prefix for output files. Defaults to "<ChEMBLID>/<ChEMBLID>" '
+                             'creating a subdirectory named after the target.')
+    parser.add_argument('-a', '--act', metavar='binding inhibitor activator', required=False, nargs='*',
+                        default=['other'],
+                        help='Activity mechanism types to retain. Allowed values come from the built-in '
+                             'activity tree (see --show_tree_act): allosteric, antagonist, agonist, '
+                             'activator, blockator, inhibitor, binding, other.')
+    parser.add_argument('-c', '--contr', metavar='agonist antagonist', required=False, nargs='*', default=[],
+                        help='Pairs of activity types that are considered contradictory. Compounds '
+                             'labelled active for both types in a pair are marked as controversial and '
+                             'excluded. Provide space-separated pairs, e.g. "agonist antagonist".')
+    parser.add_argument('-v', '--value', metavar='value/plog_value', required=False, default='plog_value',
+                        help='Column used when comparing against --active_value / --inactive_value thresholds. '
+                             '"value" is the raw measurement in nM; '
+                             '"plog_value" is -log10(value * 10^-9), equivalent to pKi / pIC50. '
+                             'The default thresholds (6) correspond to plog_value scale '
+                             '(pIC50 >= 6 ≈ IC50 <= 1000 nM).')
+    parser.add_argument('-d', '--db', metavar='ChEMBL29.db', default=None,
+                        help='Path to a local ChEMBL SQLite database file. '
+                             'If not provided, data are fetched from the ChEMBL REST API.')
+    parser.add_argument('-s', '--smi_std', metavar='smi_std.smi', default=None,
+                        help='Tab-separated file with standardized SMILES (columns: SMILES, ChEMBL compound ID). '
+                             'When provided, structures are replaced with standardized ones and MW is computed.')
+    parser.add_argument('--active_value', metavar='number', required=False, default='6',
+                        help='Threshold used to label compounds as active. Interpreted in the scale '
+                             'selected by --value (default plog_value, so 6 means pIC50 >= 6, i.e. IC50 <= 1000 nM).')
+    parser.add_argument('--active_op', metavar='operator', required=False, default='>=',
+                        help='Comparison operator applied to --active_value. '
+                             'Supported: =, !=, <, <=, >, >=.')
+    parser.add_argument('--inactive_value', metavar='number', required=False, default='6',
+                        help='Threshold used to label compounds as inactive. Interpreted in the scale '
+                             'selected by --value (default plog_value, so 6 means pIC50 < 6, i.e. IC50 > 1000 nM).')
+    parser.add_argument('--inactive_op', metavar='operator', required=False, default='<',
+                        help='Comparison operator applied to --inactive_value. '
+                             'Supported: =, !=, <, <=, >, >=.')
+    parser.add_argument('--sep', metavar='separator', required=False, default='\t',
+                        help='Column separator used in output CSV files.')
+    parser.add_argument('--show_tree_act', action='store_true', default=False,
+                        help='Print the full activity-type classification tree and exit.')
 
     args = parser.parse_args()
     print(vars(args))

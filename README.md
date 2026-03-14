@@ -1,181 +1,198 @@
-# ChEMBL datasets preparation
-**Dataset collection and preprocessing script**   
-a Python-based tool to automate the retrieval and preprocessing of datasets from the ChEMBL database, tailored to specific activity types (e.g., agonists, antagonists, inverse agonists).
-## Pipeline
-**1. Collect activity data for preset target by ChEMBLID from ChEMBL(from api version or local db)**  
-Received data:
-- ChEMBLID of compound
-- molecule_pref_name
-- operator: <,>,=,>=,<=
-- activity value
-- pchembl_value: log of the activity value 
-- units: nM, %, mM etc 
-- bioactivity_type: Ki, Kd, IC50, EC50 etc.
-- assay_type: B, F etc.
-- target_chembl_id
-- target_pref_name
-- assay_description
-- smiles
-- reference  
+# ChEMBL Datasets Collection
 
-**2. Assign type of activity**  
-_Columns "act" and "type_act"._  
-_"act"_: Search combination of key words in the assay_description column to assign act of compound among chosen by user.  
-Also we check some combination of key words which are not allowed to present in the assay description.
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![Python: >=3.6](https://img.shields.io/badge/Python-≥3.6-green.svg)
 
-_For example._ Type of act is "activator".  
- Search all words specified in the list in the assay description:   
- ['activation', 'activity at', 'activity towards', 'activity against', 'activity of', 'induction',
-                 'activation'].  
-Then check if there are not any "anti key" words:  ['inhibition', 'inhibitory','inhibitors', 'inhibitor', 'inhibit', 'antagonist', 'inactivation']. 
-```
-'activator': {'activator': [
-                ['activation', 'activity at', 'activity towards', 'activity against', 'activity of', 'induction',
-                 'activation'],
-                ['inhibition', 'inhibitory','inhibitors', 'inhibitor', 'inhibit', 'antagonist', 'inactivation'], []]}, 
+A Python tool to automate retrieval and preprocessing of bioactivity datasets from [ChEMBL](https://www.ebi.ac.uk/chembl/), ready for QSAR/ML modeling.
 
-```
-Allowed types:
-- allosteric
-- antagonist
-- agonist
-- inhibitor
-- activator
-- blockator
-- binding
-- other (use this option if you want just collect data without any specification of act)
+**Authors:** Aleksandra Ivanova, Aleksandra Nikonenko, Pavel Polishchuk (2021)
 
-_"type act"_
-More detail specifictaion of act.
-Allowed types:
-- allosteric
-- inverse agonist
-- competitive antagonist
-- non-competitive antagonist
-- antagonist
-- partial agonist
-- full agonist
-- agonist
-- activator
-- blockator
-- competitive inhibitor
-- uncompetitive inhibitor
-- non-competitive inhibitor
-- inhibitor
-- binding
-- other
+---
 
-You can find more details using --show_tree_act argument  
-**! Warning:** The order of parameters in act/act_type is important. Set it in order from most specific type_act to least. Because once a type is assigned, it cannot be overwritten, and the order of assignment is equal to the order of the given arguments. Example: -a "partial agonist" "agonist" but not -a "agonist" "partial agonist".    
-```
-python Dataset_collection.py --show_tree_act
-```
-Tree_act dictionary structure: {act_class: and its key words [[any],[not],[all]]}
+## Features
 
-**3. Preprocessing**
-- Remove compounds with undefined value of activity
-- Add standardized smiles column if special file was provided (see example)
-- Calculate MW  
+- Fetch bioactivity data via the **ChEMBL REST API** or a **local SQLite database**
+- Classify compounds by activity type (agonist, antagonist, inhibitor, etc.) using assay description keyword matching
+- Build **classification** (active/inactive labels) or **regression** (mean pActivity values) datasets
+- Convert units automatically (uM, mM → nM) and calculate plog values
+- Remove controversial data (e.g., compounds active as both agonist and antagonist)
+- Batch-process multiple targets in parallel with literature-recommended thresholds
 
-_Classification dataset_
- - Add column _Status_  
- Set it as "Active" if:
-  1) experiment has bioactivity_type value listed by user in activity argument. _Exp: Ki Kd IC50_
-  2) Value of activity in range of given threshold (value <= given threshold)
-  3) Units of activity in nM, uM, mM (internal conversation to nM. Original data is saved in Log_Note column of log files)
-  
-_Regression dataset_
-- Get mean value for compound between similar experiments  
-(Group by (standardized or canonical) smiles, bioactivity type, units, act and type of act)
-
-**4. Remove controversial activity**
-- Remove compound if it is active in experiments of the opposite type  
-_Example_: remove compound which is active as agonist and antagonist in different experiments towards the target
-
-_Classification dataset_
-- Remove compound if it has more then 1 status of activity (active and inactive) in the similar experiments
-
-_Regression dataset_
- - Remove compound if difference between min and max log of value equals or greater than 0.5 in the similar experiments.
- - Remove compound if at least one of the group of similar experiments operator not equals '=' 
-
-**5. Save processed data**
- - Remove duplicates of compounds in the similar experiments
- - Split and save compounds by given by user act values (Exp: inhibitor, agonist etc.)
- - Save log file containing all original data
- - Calculate and save statistics data (Number of active, inactive, undefined compounds in each act group)
-
-## Dependency
-* **Python (>=3.6)**
-* **RDKit**
-* **Numpy**
-* **Pandas**
-* **Requests**
+---
 
 ## Installation
-```
-conda create -n dataset-collect
+
+```bash
+conda create -n dataset-collect python=3.10
 conda activate dataset-collect
-```
-**Install dependencies from conda**
-```
-conda install -c conda-forge rdkit pandas requests
+conda install -c conda-forge rdkit pandas requests numpy
 ```
 
-## Usage
-```
-source activate dataset-collect
-```
-**1. Set all values via command line**
-```
-cat example/chembl_ids | xargs -I {1} python Dataset_collection.py -i {1} --t reg --activity EC50 IC50 -v plog_value -a inhibitor
-```
-**2. Set all values via recommended thresholds**   
-Using thresholds recommended for different families of protein targets in the paper of Bosc et al. _[N. Bosc, F. Atkinson, E. Felix, A. Gaulton, A. Hersey, A. R. Leach,
-J. Cheminf. 2019, 11, 4.]_.   
-Compounds are labeled active if their pKi or pIC50
-is >= 6 for enzyme targets and >= 7.5 for membrane proteins, and inactive otherwise.  
-**Using protein classes:** _epigenetic_factor, transporter, ion_channel, enzyme, membrane_protein, membrane_receptor_
-```
-python dataset_script.py -i  example/chembl29_test.csv -n 4 
-```
-**3. Collect data from ChEMBL without specification of act**
-Dataset_collection.py -i your_ChEMBLID --t reg --activity EC50 IC50 -v plog_value -a other
+---
 
+## Quick Start
 
-## Command-line
+**Single target — regression dataset:**
+```bash
+python Dataset_collection.py -i CHEMBL301 --t reg --activity Ki IC50 -v plog_value -a inhibitor
 ```
-$ python Dataset_collection.py -h
-usage: Dataset_collection.py [-h] -i ChEMBLID --t class/reg --activity
-                             [Ki IC50 EC50 [Ki IC50 EC50 ...]] [-o output]
-                             [-a [binding inhibitor activator [binding inhibitor activator ...]]]
-                             [-c [inhibitor activator [inhibitor activator ...]]]
-                             [-v value/plog_value] [-d ChEMBL29.db]
-                             [-s smi_std.smi] [--active_value number]
-                             [--active_op operator] [--inactive_value number]
-                             [--inactive_op operator] [--sep separator]
-                             [--show_tree_act]
 
-optional arguments:
-  -h, --help            show this help message and exit
-  -i ChEMBLID, --input ChEMBLID
-  --t class/reg
-  --activity [Ki IC50 EC50 [Ki IC50 EC50 ...]]
-  -o output, --output output
-  -a [binding inhibitor activator [binding inhibitor activator ...]], --act [binding inhibitor activator [binding inhibitor activator ...]]
-  -c [inhibitor activator [inhibitor activator ...]], --contr [inhibitor activator [inhibitor activator ...]]
-  -v value/plog_value, --value value/plog_value
-  -d ChEMBL29.db, --db ChEMBL29.db
-                        If value is not set api ]version of ChEMBL will be used (default: None)
-  -s smi_std.smi, --smi_std smi_std.smi
-                        standardized smiles (default: None)
-  --active_value number
-  --active_op operator
-  --inactive_value number
-  --inactive_op operator
-  --sep separator
-  --show_tree_act
+**Multiple targets from a file:**
+```bash
+cat example/chembl_ids | xargs -I {} python Dataset_collection.py -i {} --t reg --activity EC50 IC50 -v plog_value -a inhibitor
 ```
+
+**Batch processing with recommended thresholds (parallel):**
+```bash
+python dataset_script.py -i example/chembl29_test.csv -n 4
+```
+
+---
+
+## Scripts
+
+| Script | Purpose |
+|---|---|
+| `Dataset_collection.py` | Single target: fetch, classify, preprocess, save |
+| `dataset_script.py` | Batch targets from CSV with literature-recommended thresholds |
+
+---
+
+## Pipeline
+
+### 1. Fetch activity data
+Retrieves from ChEMBL API or local SQLite database:
+`ChEMBL ID`, `SMILES`, `activity value`, `units`, `bioactivity type` (Ki, IC50, EC50…), `assay type`, `assay description`, `pChEMBL value`, `operator`, `target`, `reference`
+
+### 2. Classify activity type
+Assigns `act` (broad) and `type_act` (specific) columns by keyword matching on `assay_description`.
+
+Supported types:
+
+| `act` | `type_act` examples |
+|---|---|
+| agonist | full agonist, partial agonist |
+| antagonist | competitive antagonist, non-competitive antagonist, inverse agonist |
+| inhibitor | competitive inhibitor, non-competitive inhibitor, uncompetitive inhibitor |
+| activator | activator |
+| allosteric | allosteric |
+| blockator | blockator |
+| binding | binding |
+| other | (no classification) |
+
+> **Order matters:** list more specific types before general ones.
+> Use `-a "partial agonist" "agonist"`, not `-a "agonist" "partial agonist"`.
+
+To inspect the full keyword tree:
+```bash
+python Dataset_collection.py --show_tree_act
+```
+
+### 3. Preprocess
+- Convert units to nM; calculate plog values
+- Add standardized SMILES if provided via `-s`
+- Calculate molecular weight (RDKit)
+
+### 4. Label activity (classification) / aggregate (regression)
+
+**Classification:** Labels each experiment as `active`, `inactive`, or `undefined` based on value thresholds and operators.
+
+**Regression:** Groups by (SMILES, bioactivity type, units, act, type_act) and computes mean plog value.
+
+### 5. Remove controversial data
+- Compounds active in opposite-type assays (e.g., agonist AND antagonist)
+- Classification: compounds with both `active` and `inactive` labels in similar experiments
+- Regression: compounds with plog range ≥ 0.5, or non-`=` operators
+
+### 6. Save output
+- `{prefix}_{act}_{type}.csv` — dataset per activity type
+- `{prefix}_{type}_log.csv` — full log of all data
+- `{prefix}_stat.csv` — statistics (active/inactive/undefined counts)
+
+---
+
+## Usage: Dataset_collection.py
+
+```
+python Dataset_collection.py -i ChEMBLID --t class/reg --activity Ki IC50 [options]
+```
+
+| Argument | Description | Default |
+|---|---|---|
+| `-i, --input` | Target ChEMBL ID | required |
+| `--t` | Dataset type: `class` or `reg` | required |
+| `--activity` | Bioactivity types to include (e.g. `Ki IC50 EC50`) | required |
+| `-o, --output` | Output path prefix | `{ChEMBLID}/{ChEMBLID}` |
+| `-a, --act` | Activity types to extract | `other` |
+| `-c, --contr` | Pairs of contradictory activity types to filter | — |
+| `-v, --value` | Use `value` (nM) or `plog_value` | `value` |
+| `-d, --db` | Path to local ChEMBL SQLite database | API |
+| `-s, --smi_std` | Path to standardized SMILES file | — |
+| `--active_value` | Threshold value for active label | `6` |
+| `--active_op` | Operator for active threshold (`>=`, `<=`, `>`, `<`) | `>=` |
+| `--inactive_value` | Threshold value for inactive label | `6` |
+| `--inactive_op` | Operator for inactive threshold | `<` |
+| `--sep` | CSV separator | `\t` |
+| `--show_tree_act` | Print activity keyword tree and exit | — |
+
+---
+
+## Usage: dataset_script.py
+
+```
+python dataset_script.py -i targets.csv [options]
+```
+
+| Argument | Description | Default |
+|---|---|---|
+| `-i, --input` | CSV file with target metadata | required |
+| `-t, --type_dataset` | Dataset type: `class` or `reg` | `class` |
+| `-d, --db` | Local ChEMBL SQLite database | API |
+| `-s, --smi_std` | Standardized SMILES file | — |
+| `-n, --ncpu` | Number of CPU cores | `1` |
+| `--sep` | CSV separator | `\t` |
+
+**Input CSV columns:**
+
+| Column | Required | Description |
+|---|---|---|
+| `chembl_id` | yes | Target ChEMBL ID |
+| `target_class` | no | Protein class for recommended thresholds |
+| `cutoff_act` | no | Custom active threshold (overrides `target_class`) |
+| `cutoff_inact` | no | Custom inactive threshold |
+| `activity` | no | Semicolon-separated bioactivity types, e.g. `Ki;IC50` |
+| `category` | no | Semicolon-separated activity types, e.g. `agonist;antagonist` |
+
+**Recommended thresholds by protein class** (Bosc et al., J. Cheminf. 2019, 11, 4):
+
+| Protein class | Active threshold (pKi or pIC50) |
+|---|---|
+| enzyme | ≥ 7.5 |
+| membrane_protein, membrane_receptor | ≥ 7 |
+| epigenetic_factor, transporter | ≥ 6 |
+| ion_channel | ≥ 5 |
+
+---
+
+## Standardized SMILES File Format
+
+Tab-separated, one molecule per line:
+```
+[SMILES]\t[ChEMBL_ID]
+```
+Example files are in `example/`.
+
+---
+
+## Dependencies
+
+- [RDKit](https://www.rdkit.org/)
+- [Pandas](https://pandas.pydata.org/)
+- [NumPy](https://numpy.org/)
+- [Requests](https://requests.readthedocs.io/)
+
+---
 
 ## License
-BSD-3
+
+MIT — see [LICENSE](LICENSE)
