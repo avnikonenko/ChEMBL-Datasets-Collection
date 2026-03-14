@@ -1,0 +1,4 @@
+chembl_id	cutoff_act	cutoff_inact	activity	experiment_type	pref_name
+CHEMBL6030	7.0	7.0	Ki;IC50	Ki;IC50	Eukaryotic translation initiation factor 2-alpha kinase 3
+CHEMBL240	5.5	5.5	IC50;Ki;Kd	IC50;Ki;Kd	HERG
+CHEMBL2163182	6.5	6.5	Ki;IC50;Kd	Ki;IC50;Kd	NAD-dependent protein deacetylase sirtuin-6

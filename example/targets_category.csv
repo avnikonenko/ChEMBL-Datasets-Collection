@@ -1,0 +1,4 @@
+chembl_id	target_class	category	pref_name
+CHEMBL6030	enzyme	inhibitor;allosteric	Eukaryotic translation initiation factor 2-alpha kinase 3
+CHEMBL2111416	membrane_receptor	agonist;antagonist;allosteric	Integrin alpha-V/beta-6
+CHEMBL240	ion_channel	blockator;binding	HERG
