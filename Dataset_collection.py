@@ -138,7 +138,7 @@ class BaseDataSet:
         self._pdresult.loc[:,'value'] = self._pdresult['value'].apply(pd.to_numeric, downcast='float', errors='coerce')
         self._pdresult.loc[:,'pchembl_value'] = self._pdresult['pchembl_value'].apply(pd.to_numeric, downcast='float',
                                                                                 errors='coerce')
-        self._pdresult = self._pdresult.dropna(subset=['value'])
+        self._pdresult = self._pdresult.dropna(subset=['value']).copy()
         self._pdresult.loc[:, 'Log Note'] = None
 
         # convert uM or M to nM
@@ -289,20 +289,32 @@ class BaseDataSet:
         res.loc[:,'act'] = 'other'
         res.loc[:,'type_act'] = 'other'
 
+        # Pre-fetch keys for all requested types, skip invalid ones.
+        type_keys = {}
         for act_value in self._type_act:
             act, keys = self.__getkeysearch(act_value)
             if act is None and keys is None:
                 print('Warning. Error act_value', act_value)
                 continue
+            type_keys[act_value] = (act, keys)
 
-            # check if overwrite act
-            m2 = res['act'] == 'other'
-            # check assay
-            m1 = res['assay_description'].apply(self.__check_act, args=(keys,))
-            m = m1 & m2
+        def _best_match(description):
+            """Return (act, act_value) for the most specific matching type.
 
-            res.loc[m, 'act'] = act
-            res.loc[m, 'type_act'] = act_value
+            Among all types whose keyword rule matches the description, pick the
+            one with the longest keyword that actually appears in the text.
+            This is input-order independent and robust to heuristic sorting.
+            """
+            best_act_value, best_act, best_len = 'other', 'other', -1
+            for act_value, (act, keys) in type_keys.items():
+                matched = self.__longest_matched_key(description, keys)
+                if matched is not None and len(matched) > best_len:
+                    best_act_value, best_act, best_len = act_value, act, len(matched)
+            return best_act, best_act_value
+
+        results = res['assay_description'].apply(_best_match)
+        res.loc[:, 'act'] = results.apply(lambda x: x[0])
+        res.loc[:, 'type_act'] = results.apply(lambda x: x[1])
 
         return res
 
@@ -315,6 +327,17 @@ class BaseDataSet:
             return True
 
         return False
+
+    def __longest_matched_key(self, df, keys):
+        """Return the longest keyword from keys[0] (or keys[2]) found in the description,
+        or None if the rule does not match (exclusion keywords present, or no trigger found)."""
+        line = ' {} '.format(df.lower()).replace('.', ' ').replace(',', ' ')
+        if any(' {} '.format(key) in line for key in keys[1]):
+            return None
+        candidates = [key for key in keys[0] if ' {} '.format(key) in line]
+        if not candidates and keys[2] and all(' {} '.format(key) in line for key in keys[2]):
+            candidates = keys[2]
+        return max(candidates, key=len) if candidates else None
 
     def add_standardized_smiles(self, smi_filename, colname='standardized_canonical_smiles'):
         """Merge standardized SMILES from a tab-separated file (SMILES, ChEMBL ID) into the dataset."""

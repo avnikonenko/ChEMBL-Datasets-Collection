@@ -295,3 +295,190 @@ class TestMeanDuplicate:
         ds = _make_reg_ds(rows)
         ds.mean_duplicate()
         assert ds._pdresult['mean_plog_value'].iloc[0] == pytest.approx(7.0)
+
+
+# ---------------------------------------------------------------------------
+# __longest_matched_key
+# ---------------------------------------------------------------------------
+
+class TestLongestMatchedKey:
+    def setup_method(self):
+        self.ds = ClassDataSet(type_act=['inhibitor'])
+        self._lmk = self.ds._BaseDataSet__longest_matched_key
+
+    def test_returns_matched_keyword(self):
+        keys = [['inhibition'], [], []]
+        assert self._lmk('inhibition assay', keys) == 'inhibition'
+
+    def test_returns_longest_of_multiple_matches(self):
+        # both 'inhibitor' and 'inhibitory activity' are in keys[0] and in description
+        keys = [['inhibitor', 'inhibitory activity'], [], []]
+        assert self._lmk('inhibitory activity assay inhibitor', keys) == 'inhibitory activity'
+
+    def test_exclusion_returns_none(self):
+        keys = [['agonist'], ['inhibition'], []]
+        assert self._lmk('agonist inhibition assay', keys) is None
+
+    def test_no_keyword_match_returns_none(self):
+        keys = [['agonist'], [], []]
+        assert self._lmk('inhibition assay', keys) is None
+
+    def test_keys2_trigger_returns_longest(self):
+        # keys[0] empty, keys[2] all present → return longest from keys[2]
+        keys = [[], [], ['maximum', 'stimulation']]
+        assert self._lmk('maximum stimulation of receptor', keys) == 'stimulation'
+
+    def test_keys2_partial_returns_none(self):
+        keys = [[], [], ['maximum', 'stimulation']]
+        assert self._lmk('maximum activation', keys) is None
+
+    def test_case_insensitive(self):
+        keys = [['inhibitor'], [], []]
+        assert self._lmk('INHIBITOR assay', keys) == 'inhibitor'
+
+    def test_punctuation_stripped(self):
+        keys = [['inhibitor'], [], []]
+        assert self._lmk('an inhibitor. compound', keys) == 'inhibitor'
+
+    def test_partial_word_not_matched(self):
+        # 'inhibitor' should not match 'inhibitory' due to space-padding
+        keys = [['inhibitor'], [], []]
+        assert self._lmk('inhibitory compound', keys) is None
+
+    def test_empty_keys_returns_none(self):
+        keys = [[], [], []]
+        assert self._lmk('any description', keys) is None
+
+
+# ---------------------------------------------------------------------------
+# __add_act_descr  — order independence (the main fix)
+# ---------------------------------------------------------------------------
+
+def _make_df(descriptions, extra_cols=None):
+    """Build a minimal DataFrame with assay_description column."""
+    df = pd.DataFrame({'assay_description': descriptions})
+    if extra_cols:
+        for col, val in extra_cols.items():
+            df[col] = val
+    return df
+
+
+def _run_add_act(type_act_list, descriptions):
+    """Run __add_act_descr and return the resulting DataFrame."""
+    ds = ClassDataSet(type_act=type_act_list)
+    res = _make_df(descriptions)
+    return ds._BaseDataSet__add_act_descr(res)
+
+
+class TestAddActDescr:
+
+    # --- basic assignment ---
+
+    def test_inhibitor_assigned(self):
+        res = _run_add_act(['inhibitor'], ['inhibition of kinase'])
+        assert res.iloc[0]['type_act'] == 'inhibitor'
+        assert res.iloc[0]['act'] == 'inhibitor'
+
+    def test_no_match_stays_other(self):
+        res = _run_add_act(['inhibitor'], ['binding affinity measurement'])
+        assert res.iloc[0]['type_act'] == 'other'
+        assert res.iloc[0]['act'] == 'other'
+
+    # --- order independence: specific beats general regardless of list order ---
+
+    def test_partial_agonist_beats_agonist_when_general_first(self):
+        # 'agonist' is listed before 'partial agonist' — should still assign 'partial agonist'
+        res = _run_add_act(['agonist', 'partial agonist'],
+                           ['partial agonist activity at receptor'])
+        assert res.iloc[0]['type_act'] == 'partial agonist'
+
+    def test_partial_agonist_beats_agonist_when_specific_first(self):
+        res = _run_add_act(['partial agonist', 'agonist'],
+                           ['partial agonist activity at receptor'])
+        assert res.iloc[0]['type_act'] == 'partial agonist'
+
+    def test_pure_agonist_not_overridden_by_partial(self):
+        # description has 'agonist' but not 'partial' → should stay 'agonist'
+        res = _run_add_act(['agonist', 'partial agonist'],
+                           ['agonist activity at receptor'])
+        assert res.iloc[0]['type_act'] == 'agonist'
+
+    def test_competitive_inhibitor_beats_inhibitor_general_first(self):
+        res = _run_add_act(['inhibitor', 'competitive inhibitor'],
+                           ['competitive inhibition of enzyme'])
+        assert res.iloc[0]['type_act'] == 'competitive inhibitor'
+
+    def test_competitive_inhibitor_beats_inhibitor_specific_first(self):
+        res = _run_add_act(['competitive inhibitor', 'inhibitor'],
+                           ['competitive inhibition of enzyme'])
+        assert res.iloc[0]['type_act'] == 'competitive inhibitor'
+
+    def test_inverse_agonist_beats_antagonist_general_first(self):
+        res = _run_add_act(['antagonist', 'inverse agonist'],
+                           ['inverse agonist binding'])
+        assert res.iloc[0]['type_act'] == 'inverse agonist'
+
+    def test_inverse_agonist_beats_antagonist_specific_first(self):
+        res = _run_add_act(['inverse agonist', 'antagonist'],
+                           ['inverse agonist binding'])
+        assert res.iloc[0]['type_act'] == 'inverse agonist'
+
+    def test_competitive_antagonist_beats_antagonist(self):
+        res = _run_add_act(['antagonist', 'competitive antagonist'],
+                           ['competitive antagonist assay'])
+        assert res.iloc[0]['type_act'] == 'competitive antagonist'
+
+    def test_non_competitive_inhibitor_beats_inhibitor(self):
+        res = _run_add_act(['inhibitor', 'non-competitive inhibitor'],
+                           ['noncompetitive inhibition assay'])
+        assert res.iloc[0]['type_act'] == 'non-competitive inhibitor'
+
+    # --- exclusion keywords respected ---
+
+    def test_agonist_with_inhibition_stays_other(self):
+        # 'agonist' keys exclude 'inhibition'
+        res = _run_add_act(['agonist'],
+                           ['agonist inhibition assay'])
+        assert res.iloc[0]['type_act'] == 'other'
+
+    def test_partial_agonist_with_inhibition_stays_other(self):
+        res = _run_add_act(['partial agonist'],
+                           ['partial agonist inhibition assay'])
+        assert res.iloc[0]['type_act'] == 'other'
+
+    # --- multiple rows, each gets correct type ---
+
+    def test_multiple_rows_independently_assigned(self):
+        type_act = ['inhibitor', 'agonist', 'partial agonist', 'antagonist']
+        descriptions = [
+            'inhibition of kinase',
+            'agonist activity at receptor',
+            'partial agonist activity at receptor',
+            'antagonist binding assay',
+        ]
+        res = _run_add_act(type_act, descriptions)
+        assert res.iloc[0]['type_act'] == 'inhibitor'
+        assert res.iloc[1]['type_act'] == 'agonist'
+        assert res.iloc[2]['type_act'] == 'partial agonist'
+        assert res.iloc[3]['type_act'] == 'antagonist'
+
+    # --- result is the same regardless of type_act list order ---
+
+    @pytest.mark.parametrize('order', [
+        ['inhibitor', 'agonist', 'partial agonist', 'antagonist', 'inverse agonist',
+         'competitive inhibitor', 'competitive antagonist'],
+        ['partial agonist', 'inverse agonist', 'competitive inhibitor',
+         'competitive antagonist', 'agonist', 'antagonist', 'inhibitor'],
+        ['agonist', 'antagonist', 'inhibitor', 'competitive inhibitor',
+         'inverse agonist', 'competitive antagonist', 'partial agonist'],
+    ])
+    def test_assignment_independent_of_list_order(self, order):
+        descriptions = [
+            'partial agonist activity at receptor',
+            'inverse agonist binding',
+            'competitive inhibition of enzyme',
+            'competitive antagonist assay',
+        ]
+        expected = ['partial agonist', 'inverse agonist', 'competitive inhibitor', 'competitive antagonist']
+        res = _run_add_act(order, descriptions)
+        assert res['type_act'].tolist() == expected
