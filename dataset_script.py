@@ -67,7 +67,9 @@ def cuttof_target_type(targ):
 
 def pool_map_iter(chembl_row, inp_path, type_dataset, input_fname_target, db, smi_std, sep):
     """Process a single target row from the input CSV: resolve thresholds and call Dataset_collection.start."""
-    act_dict, inact_dict, type_act, contr_list, exp_type = None, None, None, None, None
+    act_dict, inact_dict, exp_type = None, None, None
+    type_act = ['other']
+    contr_list = []
 
     if 'target_class' in chembl_row:
         act_dict, inact_dict, type_act, contr_list = cuttof_target_type(chembl_row['target_class'])
@@ -105,9 +107,9 @@ def get_from_csv(fname, type_dataset='class', sep='\t', ncpu=1, db=None, smi_std
     data = pd.read_csv(fname, sep=sep)
     inp_path = os.path.dirname(fname)
     input_fname_target = os.path.basename(fname).split('.')[0]
-    p = Pool(ncpu)
-    p.map(partial(pool_map_iter,inp_path=inp_path, type_dataset=type_dataset,
-                  input_fname_target=input_fname_target, db=db, smi_std=smi_std, sep=sep), [i[1] for i in data.iterrows()])
+    with Pool(ncpu) as p:
+        p.map(partial(pool_map_iter, inp_path=inp_path, type_dataset=type_dataset,
+                      input_fname_target=input_fname_target, db=db, smi_std=smi_std, sep=sep), [i[1] for i in data.iterrows()])
 
 
 

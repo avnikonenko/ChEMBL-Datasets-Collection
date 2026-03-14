@@ -358,7 +358,7 @@ class BaseDataSet:
         """Calculate molecular weight from standardized SMILES and store it in the 'MW' column."""
         def _calc_MW(smi):
             mol = Chem.MolFromSmiles(smi)
-            return Descriptors.MolWt(mol)
+            return Descriptors.MolWt(mol) if mol is not None else None
 
         self._pdresult.loc[:, 'MW'] = self._pdresult['standardized_canonical_smiles'].apply(_calc_MW)
 
@@ -486,10 +486,10 @@ class ReggDataSet(BaseDataSet):
         """Add mean_plog_value and mean_value columns computed over groups of (SMILES, bioactivity type, units, act, type_act)."""
         self._pdresult.loc[:, 'mean_plog_value'] = \
             self._pdresult.groupby([self._id_cmp, 'bioactivity_type','units', 'act', 'type_act'])[
-                'plog_value'].transform(np.mean)
+                'plog_value'].transform('mean')
         self._pdresult.loc[:, 'mean_value'] = \
             self._pdresult.groupby([self._id_cmp, 'bioactivity_type', 'units', 'act', 'type_act'])[
-                'value'].transform(np.mean)
+                'value'].transform('mean')
 
 
 class ClassDataSet(BaseDataSet):
