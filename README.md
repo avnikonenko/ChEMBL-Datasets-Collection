@@ -5,7 +5,6 @@
 
 A Python tool to automate retrieval and preprocessing of bioactivity datasets from [ChEMBL](https://www.ebi.ac.uk/chembl/), ready for QSAR/ML modeling.
 
-**Authors:** Aleksandra Ivanova, Aleksandra Nikonenko, Pavel Polishchuk (2021)
 
 ---
 
@@ -174,15 +173,6 @@ python dataset_script.py -i targets.csv [options]
 
 ---
 
-## Standardized SMILES File Format
-
-Tab-separated, one molecule per line:
-```
-[SMILES]\t[ChEMBL_ID]
-```
-Example files are in `example/`.
-
----
 
 ## Dependencies
 
@@ -196,3 +186,6 @@ Example files are in `example/`.
 ## License
 
 MIT — see [LICENSE](LICENSE)
+
+## Authors
+Aleksandra Ivanova, Pavel Polishchuk (2021)
