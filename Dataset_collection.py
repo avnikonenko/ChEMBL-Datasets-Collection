@@ -33,10 +33,10 @@ tree_act = {'allosteric': {'allosteric': [['allosteric'], [], []]},
                            'antagonist': [['antagonist', 'antagonism', 'antagonistic activity', 'antagonistic'], [],
                                           []]},
 
-            'agonist': {'partial agonist': [['partial agonist'], ['inhibition', 'inhibitory', 'inhibitor', 'antogonist',
+            'agonist': {'partial agonist': [['partial agonist'], ['inhibition', 'inhibitory', 'inhibitor', 'antogonist', 'antagonist',
                                                                   'inhibit', 'inactivation', 'intrinsic','inhibitors'], []],
                         'full agonist': [['maximal', 'maximum agonist'],
-                                         ['inhibition', 'inhibitory', 'inhibitor','inhibitors', 'antogonist', 'inhibit',
+                                         ['inhibition', 'inhibitory', 'inhibitor','inhibitors', 'antogonist', 'antagonist', 'inhibit',
                                           'inactivation', 'intrinsic'], ['maximum', 'stimulation']],
 
                         'agonist': [['agonist', 'agonistic activity', 'activity at', 'activation of',
