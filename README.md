@@ -43,8 +43,10 @@ cat example/chembl_ids | xargs -I {} python Dataset_collection.py -i {} --t reg 
 
 **Batch processing with recommended thresholds (parallel):**
 ```bash
-python dataset_script.py -i example/chembl29_test.csv -n 4
+python dataset_script.py -i example/chembl29_targets_test.csv -n 4
 ```
+
+See [example/README.md](example/README.md) for a description of all example input files and [example/run_examples.sh](example/run_examples.sh) for ready-to-run commands.
 
 ---
 
@@ -168,7 +170,7 @@ python dataset_script.py -i targets.csv [options]
 |---|---|
 | enzyme | ≥ 7.5 |
 | membrane_protein, membrane_receptor | ≥ 7 |
-| epigenetic_factor, transporter | ≥ 6 |
+| epigenetic_factor, epigenetic regulator, transporter | ≥ 6 |
 | ion_channel | ≥ 5 |
 
 ---
